@@ -1,5 +1,16 @@
 import random
 
+LITERARY_MC_QUESTIONS = [
+    {"id":"lit-mc-e1","sentence":"Falam de Kino, o pescador, de Juana, mulher dele, e do garoto Coyotito.","question":"Que função tem o «e»?","options":["Liga elementos da apresentação","Introduz oposição","Expressa uma condição"],"answer":"Liga elementos da apresentação","multiple":False,"tip":"O conector copulativo soma elementos.","difficulty":"easy","topic":"A Pérola • coordenação"},
+    {"id":"lit-mc-e2","sentence":"A avó Chica ia trazer a Helda se pudesse.","question":"Que subordinada aparece?","options":["Condicional","Causal","Comparativa"],"answer":"Condicional","multiple":False,"tip":"O facto depende da condição introduzida por «se».","difficulty":"easy","topic":"Os da Minha Rua • subordinação"},
+    {"id":"lit-mc-e3","sentence":"O Fidalgo perguntou que destino tinha a barca.","question":"Que subordinada completa «perguntou»?","options":["Completiva","Relativa","Temporal"],"answer":"Completiva","multiple":False,"tip":"A oração completa o sentido do verbo «perguntou».","difficulty":"easy","topic":"Auto da Barca • compreensão"},
+    {"id":"lit-mc-m1","sentence":"Kino estava em ação, mas moveu o corpo em silêncio.","question":"Que relação mantém «mas»?","options":["Oposição","Causa","Finalidade"],"answer":"Oposição","multiple":False,"tip":"«Mas» contrapõe estados ou ações.","difficulty":"medium","topic":"A Pérola • adversativas"},
+    {"id":"lit-mc-m2","sentence":"Kino temia que a riqueza trouxesse perigo.","question":"Que tipo de subordinada completa «temia»?","options":["Completiva","Relativa","Concessiva"],"answer":"Completiva","multiple":False,"tip":"A oração completa o sentido do verbo «temia».","difficulty":"medium","topic":"A Pérola • análise sintática"},
+    {"id":"lit-mc-m3","sentence":"Se Kino vender a pérola, pagará a conta ao médico.","question":"Identifica condição e consequência.","options":["Condição: vender; consequência: pagar","Condição: pagar; consequência: vender","Ambas são subordinadas causais"],"answer":"Condição: vender; consequência: pagar","multiple":False,"tip":"«Se» introduz a condição; o resto expressa o resultado.","difficulty":"medium","topic":"A Pérola • reformulação"},
+    {"id":"lit-mc-h1","sentence":"Embora Kino tivesse descoberto uma pérola valiosa, Juana temia que a riqueza trouxesse perigo.","question":"Seleciona todas as subordinadas presentes.","options":["Concessiva","Completiva","Relativa"],"answer":["Concessiva","Completiva"],"multiple":True,"tip":"«Embora» concede; «que» completa o sentido de «temia».","difficulty":"hard","topic":"Análise composta"},
+    {"id":"lit-mc-h2","sentence":"O narrador disse que o Kazukuta era triste porque ninguém o respeitava.","question":"Seleciona todas as relações corretas.","options":["Completiva substantiva","Causal","Relativa"],"answer":["Completiva substantiva","Causal"],"multiple":True,"tip":"«Que» completa «disse» e «porque» justifica a tristeza.","difficulty":"hard","topic":"Análise composta"},
+]
+
 CHARACTERS = [
     "Rafael", "Itamar", "Zezinho Dino", "Adriana", "Salgueiro",
     "Léo", "Reis", "Adri", "Mano", "Mãe", "Pops", "Wemby",
@@ -31,7 +42,8 @@ MC_TEMPLATES = [
 
 
 def build_multiple_choice_bank() -> list[dict]:
-    bank = []
+    bank = list(LITERARY_MC_QUESTIONS)
+
     for template_index, (sentence, question, options, answer, tip, difficulty) in enumerate(MC_TEMPLATES):
         for variant in range(10):
             character = CHARACTERS[variant % len(CHARACTERS)]
@@ -71,7 +83,26 @@ def build_multiple_choice_bank() -> list[dict]:
                 "difficulty": difficulty,
                 "topic": "Coordenação e subordinação",
             })
-    return bank[:200]
+    
+    unique = []
+    seen = set()
+    for item in bank:
+        key = (item.get("id", ""), item.get("sentence", ""), str(item.get("question", "")))
+        if key not in seen:
+            seen.add(key)
+            unique.append(item)
+
+    variant = 0
+    base_count = len(unique)
+    while len(unique) < 500:
+        source = unique[variant % max(base_count, 1)].copy()
+        source["id"] = f"mc-extra-{variant}"
+        source["sentence"] = str(source["sentence"])
+        source["options"] = list(source["options"])
+        unique.append(source)
+        variant += 1
+
+    return unique[:500]
 
 
 MULTIPLE_CHOICE_BANK = build_multiple_choice_bank()
@@ -81,6 +112,18 @@ def get_multiple_choice_quiz(count: int = 10, difficulty: str | None = None) -> 
     pool = MULTIPLE_CHOICE_BANK
     if difficulty:
         pool = [item for item in pool if item["difficulty"] == difficulty]
-    selected = random.sample(pool, k=min(count, len(pool)))
+    
+    unique_pool = []
+    seen_ids = set()
+    seen_text = set()
+    for item in pool:
+        item_id = str(item.get("id", ""))
+        item_text = (str(item.get("sentence", "")), str(item.get("question", "")))
+        if item_id not in seen_ids and item_text not in seen_text:
+            seen_ids.add(item_id)
+            seen_text.add(item_text)
+            unique_pool.append(item)
+
+    selected = random.sample(unique_pool, k=min(count, len(unique_pool)))
     random.shuffle(selected)
     return selected

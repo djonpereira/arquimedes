@@ -1,9 +1,11 @@
 import streamlit as st
 
-from services.progress import award_quiz, complete_session_mode
+from services.progress import award_quiz, complete_session_mode, save_mini_game_result
 from services.question_bank import get_random_quiz
 from components.encouragement import encouragement
-from services.settings_store import calculate_pass
+from services.settings_store import calculate_pass, load_settings
+from components.mini_game_lock import show_locked_result
+from components.mini_game_shell import render_mini_game_status, render_mini_game_card, render_mini_game_feedback
 
 
 QUESTIONS = [
@@ -16,6 +18,9 @@ QUESTIONS = [
 
 
 def render_experiment(mode: str = "mission", subject: str = "Português", topic: str = "Coordenação e subordinação") -> None:
+    if show_locked_result("Missão Quiz"):
+        return
+
     title = "Treino Express" if mode == "express" else "Partida Relâmpago"
     st.markdown('<span class="eyebrow">3 jogadas • menos de 2 minutos</span>', unsafe_allow_html=True)
     st.markdown(f'<h1 class="lesson-title">Rafael, {title}</h1>', unsafe_allow_html=True)
@@ -29,28 +34,8 @@ def render_experiment(mode: str = "mission", subject: str = "Português", topic:
     st.session_state.setdefault("quiz_made", 0)
     st.session_state.setdefault("quiz_saved", False)
 
-    st.markdown('<span class="eyebrow">10 jogadas • dificuldade misturada</span>', unsafe_allow_html=True)
-
-    difficulty = st.segmented_control(
-        "Dificuldade",
-        ["Misturada", "Fácil", "Média", "Difícil"],
-        selection_mode="single",
-        default="Misturada",
-    )
-
-    if "quiz_difficulty" not in st.session_state:
-        st.session_state.quiz_difficulty = "Misturada"
-
-    if st.session_state.quiz_difficulty != difficulty:
-        st.session_state.quiz_difficulty = difficulty
-        st.session_state.quiz_index = 0
-        st.session_state.quiz_xp = 0
-        st.session_state.quiz_answered = False
-        st.session_state.quiz_streak = 0
-        st.session_state.quiz_saved = False
-        st.session_state.quiz_made = 0
-        st.session_state.quiz_best_streak = 0
-        st.session_state.quiz_questions = None
+    difficulty = load_settings()["difficulty_missao_quiz"]
+    st.markdown(f'<span class="eyebrow">10 jogadas • dificuldade {difficulty.lower()}</span>', unsafe_allow_html=True)
 
     difficulty_map = {"Fácil": "easy", "Média": "medium", "Difícil": "hard"}
 
@@ -86,15 +71,18 @@ def render_experiment(mode: str = "mission", subject: str = "Português", topic:
         return
 
     question = questions[index]
-    st.progress((index + 1) / len(questions), text=f"Jogada {index + 1} de {len(questions)}")
+    live_status = calculate_pass(st.session_state.quiz_made, len(questions))
+    render_mini_game_status("Jogada", index, len(questions), live_status["percentage"], live_status["threshold"], st.session_state.quiz_xp)
 
-    shot1, shot2 = st.columns([1.15, 1])
-    with shot1:
-        st.markdown(f'''<div class="shot-stage"><div class="hoop">CESTO</div><div class="ball{(' shot-made' if st.session_state.quiz_answered else '')}">●</div><div class="shot-floor"></div></div>''', unsafe_allow_html=True)
-    with shot2:
-        st.markdown(f'<div class="quiz-card"><span class="eyebrow">Jogada {index + 1}</span><h2>“{question["sentence"]}”</h2><p>{question["question"]}</p></div>', unsafe_allow_html=True)
-        answer = st.radio("Escolhe o lançamento", question["options"], key=f"answer_{index}", index=None, disabled=st.session_state.quiz_answered)
-        confirm = st.button("Lançar!", type="primary", use_container_width=True, disabled=st.session_state.quiz_answered)
+    if live_status["passed"]:
+        st.success("Limite atingido.")
+    else:
+        st.caption("Limite ainda não atingido.")
+
+    render_mini_game_card(question["id"], question.get("difficulty", "").upper(), question.get("topic", ""), f"“{question['sentence']}”", question["question"])
+
+    answer = st.radio("Escolhe uma resposta", question["options"], key=f"answer_{index}", index=None, disabled=st.session_state.quiz_answered)
+    confirm = st.button("Confirmar resposta", type="primary", use_container_width=True, disabled=st.session_state.quiz_answered)
 
     if confirm:
         if answer is None:
@@ -105,14 +93,13 @@ def render_experiment(mode: str = "mission", subject: str = "Português", topic:
             st.session_state.quiz_made += 1
             st.session_state.quiz_best_streak = max(st.session_state.quiz_best_streak, st.session_state.quiz_streak)
             st.session_state.quiz_answered = True
-            st.markdown('<div class="encourage-card made"><b>🏀 Cesto limpo!</b><span>+20 XP • streak ativo</span></div>', unsafe_allow_html=True)
-            st.info(question["tip"])
+            render_mini_game_feedback(True, question["tip"], 20)
             encouragement("correct")
         else:
             st.session_state.quiz_streak = 0
             st.session_state.quiz_answered = True
-            st.markdown('<div class="encourage-card missed"><b>Bloqueio defendido</b><span>Ajusta a jogada. Aprende com o lance.</span></div>', unsafe_allow_html=True)
             st.info(question["tip"])
+            render_mini_game_feedback(False, question["tip"], 20)
             encouragement("incorrect")
 
     if st.session_state.quiz_answered:
@@ -123,10 +110,13 @@ def render_experiment(mode: str = "mission", subject: str = "Português", topic:
 
     st.caption(f"XP: {st.session_state.quiz_xp}  •  Streak: {st.session_state.quiz_streak}")
 
+'''
     pass_status = calculate_pass(st.session_state.quiz_made, len(questions))
     st.progress(pass_status["percentage"] / 100, text=f"Aproveitamento: {pass_status['percentage']}% • limite: {pass_status['threshold']}%")
     if not pass_status["passed"]:
         st.error("Ainda não atingiste o limite. Recomeça o mini-jogo e melhora esta jogada.")
     else:
         st.success("Mini-jogo concluído com aproveitamento suficiente!")
+        save_mini_game_result("Missão Quiz", st.session_state.quiz_xp, pass_status["percentage"], pass_status["passed"])
         complete_session_mode("Missão Quiz")
+'''

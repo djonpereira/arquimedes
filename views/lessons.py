@@ -1,5 +1,7 @@
 import streamlit as st
 
+from services.curriculum import CURRICULUM
+
 
 def _colored_card(title: str, text: str, color: str) -> None:
     st.markdown(
@@ -12,6 +14,23 @@ def render_lessons(subject: str = "Português", topic: str = "Coordenação e su
     st.markdown('<span class="eyebrow">Mapa visual da matéria • 9.º ano</span>', unsafe_allow_html=True)
     st.markdown('<h1 class="lesson-title">Rafael, entende primeiro a estrutura.</h1>', unsafe_allow_html=True)
     st.markdown(f'<span class="eyebrow">{subject} • {topic}</span>', unsafe_allow_html=True)
+
+    curriculum_topic = CURRICULUM.get(subject, {}).get("topics", {}).get(topic, {})
+    topic_summary = curriculum_topic.get("summary", "Resumo visual dos conceitos essenciais desta matéria.")
+    intro1, intro2 = st.columns([1.45, 0.55])
+    with intro1:
+        st.markdown(
+            '<div class="study-card blue"><h3>Objetivo desta revisão</h3>'
+            f'<p><b>{topic_summary}</b><br>Usa este resumo para compreender o conceito, reconhecer padrões '
+            'e preparar as respostas dos mini-jogos.</p></div>',
+            unsafe_allow_html=True,
+        )
+    with intro2:
+        st.markdown(
+            '<div class="study-card green"><h3>Método de estudo</h3>'
+            '<p>1. Observa o mapa.<br>2. Lê os exemplos.<br>3. Responde às perguntas-guia.<br>4. Faz o plano final.</p></div>',
+            unsafe_allow_html=True,
+        )
 
     st.markdown("""
     <div class="structure-map">
@@ -128,3 +147,47 @@ def render_lessons(subject: str = "Português", topic: str = "Coordenação e su
         e3.warning("**Não dividir por vírgula à pressa.** A vírgula pode separar coordenadas ou marcar subordinação.")
 
         st.success("**Frase-modelo:** “O jogador treinou muito, mas perdeu o jogo, porque estava lesionado.”\n\nResposta: `mas perdeu o jogo` é coordenada adversativa; `porque estava lesionado` é subordinada adverbial causal.")
+
+        st.markdown("### Perguntas de autoavaliação")
+        q1, q2 = st.columns(2)
+        with q1:
+            st.checkbox("Consigo separar corretamente as orações da frase complexa?", key="lesson_auto_1")
+            st.checkbox("Consigo identificar o conector sem adivinhar pelo contexto?", key="lesson_auto_2")
+        with q2:
+            st.checkbox("Consigo explicar por que razão existe coordenação ou subordinação?", key="lesson_auto_3")
+            st.checkbox("Consigo reformular uma frase sem alterar o sentido?", key="lesson_auto_4")
+
+        st.markdown(
+            '<div class="study-card blue"><h3>Quando estás pronto</h3>'
+            '<p>Deves conseguir identificar a função da oração, nomear o conetor, explicar a relação entre ideias '
+            'e justificar a resposta com uma frase curta.</p></div>',
+            unsafe_allow_html=True,
+        )
+
+    if subject != "Português" or topic != "Coordenação e subordinação":
+        st.markdown("### Mapa essencial")
+        map1, map2, map3 = st.columns(3)
+        with map1:
+            _colored_card("1. Conceito", topic_summary, "blue")
+        with map2:
+            _colored_card("2. Reconhecer", "Identifica palavras-chave, exemplos e relações importantes nesta matéria.", "purple")
+        with map3:
+            _colored_card("3. Aplicar", "Resolve um exemplo próprio e explica por que razão ele está correto.", "green")
+
+        st.markdown("### Perguntas para dominar o tema")
+        questions = [
+            f"O que é essencial compreender em «{topic}»?",
+            "Que palavras-chave ajudam a reconhecer este conceito?",
+            "Que exemplo concreto posso usar para explicar a ideia?",
+            "Que erro é mais fácil cometer neste tema e como o posso evitar?",
+        ]
+        for index, question in enumerate(questions, start=1):
+            st.checkbox(f"{index}. {question}", key=f"generic_lesson_{subject}_{topic}_{index}")
+
+        st.markdown("### Método de revisão")
+        r1, r2, r3 = st.columns(3)
+        r1.info("**Recordar**\nExplica a ideia principal sem consultar a página.")
+        r2.info("**Reconstruir**\nResolve um exemplo curto com o teu próprio raciocínio.")
+        r3.info("**Verificar**\nConfirma o resultado e corrige o método, não apenas a resposta.")
+        st.success("Quando consegues explicar o tema, dar um exemplo e corrigir um erro, estás pronto para os mini-jogos.")
+        return

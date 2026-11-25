@@ -1,68 +1,25 @@
+import random
+
 import streamlit as st
 
-from services.progress import award_quiz, complete_session_mode
-from services.literary_writing_bank import WRITING_PROMPTS, LITERARY_MISSIONS, BOOK_DESCRIPTIONS, validate_writing
+from services.progress import award_quiz, complete_session_mode, save_mini_game_result
+from services.literary_writing_bank import WRITING_PROMPTS, LITERARY_MISSIONS, BOOK_DESCRIPTIONS, validate_writing, validate_verified_quote
 from components.encouragement import encouragement
-from services.settings_store import calculate_pass
+from services.settings_store import calculate_pass, load_settings
+from components.mini_game_lock import show_locked_result
+
+writing_difficulty = load_settings()["difficulty_escrita"]
 
 
 def render_writing(subject: str = "Português", topic: str = "Coordenação e subordinação") -> None:
+    if show_locked_result("Laboratório de Escrita"):
+        return
+
     st.markdown('<span class="eyebrow">Laboratório de escrita • lê, cria e corrige</span>', unsafe_allow_html=True)
     st.markdown('<h1 class="lesson-title">Escreve a tua própria oração</h1>', unsafe_allow_html=True)
     st.markdown(f'<span class="eyebrow">{subject} • 9.º ano • {topic}</span>', unsafe_allow_html=True)
 
-    st.session_state.setdefault("writing_index", 0)
-    st.session_state.setdefault("writing_score", 0)
-    st.session_state.setdefault("writing_answered", False)
-
-    index = st.session_state.writing_index
-
     render_literary_mission_selection(subject, topic)
-
-    if index >= len(WRITING_PROMPTS):
-        award_quiz(subject, topic, st.session_state.writing_score)
-        st.markdown('<div class="finish-card"><span>DESAFIO DE ESCRITA</span><h2>Rafael, completas-te o laboratório! ✍️</h2><p>A escrita obriga-te a verificar o verbo, o conector e o sentido.</p></div>', unsafe_allow_html=True)
-        st.metric("XP ganho", st.session_state.writing_score)
-        if st.button("Repetir escrita", type="primary"):
-            st.session_state.writing_index = 0
-            st.session_state.writing_score = 0
-            st.session_state.writing_answered = False
-            st.rerun()
-        return
-
-    prompt = WRITING_PROMPTS[index]
-    st.progress((index + 1) / len(WRITING_PROMPTS), text=f"Tarefa {index + 1} de {len(WRITING_PROMPTS)}")
-
-    st.markdown(f'<div class="scenario-card">📖 <b>Contexto da cena</b><p>{prompt["scene"]}</p></div>', unsafe_allow_html=True)
-    st.markdown("### Tua missão")
-    st.write(prompt["instruction"])
-
-    with st.expander("Pedir uma pista"):
-        st.write("Começa por escolher um sujeito, uma ação e o conector pedido.")
-        st.write("Exemplo de estrutura: **sujeito + verbo; conector + outra ação**.")
-
-    answer = st.text_area("Escreve a tua oração", key=f"writing_answer_{index}", height=110)
-
-    if st.button("Corrigir a escrita", type="primary", use_container_width=True):
-        result = validate_writing(answer, prompt)
-        if result["correct"]:
-            st.session_state.writing_score += 25
-            st.session_state.writing_answered = True
-            st.success(result["message"] + " +25 XP")
-            encouragement("correct")
-            st.caption("Podes comparar com estas frases de referência:")
-            for example in prompt["examples"]:
-                st.write(f"- {example}")
-        else:
-            st.session_state.writing_answered = False
-            st.error(result["message"])
-            encouragement("incorrect")
-
-    if st.session_state.writing_answered:
-        if st.button("Próxima tarefa →", use_container_width=True):
-            st.session_state.writing_index += 1
-            st.session_state.writing_answered = False
-            st.rerun()
 
 
 def render_literary_missions(subject: str, topic: str) -> None:
@@ -85,7 +42,14 @@ def render_literary_missions(subject: str, topic: str) -> None:
     description = BOOK_DESCRIPTIONS.get(mission["book"])
     st.progress((index + 1) / len(LITERARY_MISSIONS), text=f"Investigação {index + 1} de {len(LITERARY_MISSIONS)}")
 
-    st.markdown(f'<div class="scenario-card">📚 <b>{mission["book"]}</b><br><small>{mission["author"]}</small><p>{description}</p><p><b>Localização:</b> {mission["location"]}</p></div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="study-card blue"><span class="eyebrow">ID: writing-literary</span>'
+        '<br><span class="eyebrow">ESCRITA • COORDENAÇÃO E SUBORDINAÇÃO</span>'
+        f'<h2>{mission["book"]}</h2><p>{description}</p>'
+        f'<p><b>Localização:</b> {mission["location"]}</p>'
+        f'<p><b>Exercício:</b> {mission["instruction"]}</p></div>',
+        unsafe_allow_html=True,
+    )
     st.markdown("### Pista de investigação")
     st.write(mission["character_hint"])
     st.info(mission["instruction"])
@@ -146,19 +110,47 @@ def render_literary_mission_selection(subject: str, topic: str) -> None:
     count = len(completed)
     st.progress(min(count / 2, 1.0), text=f"Missões concluídas: {count} / 2 necessárias")
 
-    if count >= 2:
-        complete_session_mode("Laboratório de Escrita")
-        st.success("Mini-jogo concluído! Duas tarefas de escrita foram realizadas.")
+    live_status = calculate_pass(count, 2)
+    st.progress(live_status["percentage"] / 100, text=f"Aproveitamento: {live_status['percentage']}% • limite: {live_status['threshold']}%")
+    if live_status["passed"]:
+        save_mini_game_result(
+            "Laboratório de Escrita",
+            count * 40,
+            live_status["percentage"],
+            True,
+        )
+        st.success("Limite atingido.")
     else:
-        st.info(f"Falta realizar {2 - count} tarefa(s) para concluir o mini-jogo.")
+        st.caption("Limite ainda não atingido.")
 
 
 def render_own_sentence_task(choice: str) -> None:
-    st.markdown('<div class="scenario-card">✍️ <b>Frase minha</b><p>Cria uma frase original usando uma relação sintática pedida.</p></div>', unsafe_allow_html=True)
-    prompt = WRITING_PROMPTS[st.session_state.get("own_sentence_prompt_index", 0) % len(WRITING_PROMPTS)]
-    st.write(prompt["instruction"])
+    if "own_sentence_prompt_order" not in st.session_state:
+        st.session_state.own_sentence_prompt_order = random.sample(range(len(WRITING_PROMPTS)), len(WRITING_PROMPTS))
+    st.session_state.setdefault("own_sentence_prompt_position", 0)
     st.session_state.setdefault("own_sentence_answered", False)
-    answer = st.text_area("Escreve aqui a tua frase", key="own_selected_sentence_tabs", height=110, disabled=st.session_state.own_sentence_answered)
+
+    prompt_position = st.session_state.own_sentence_prompt_position % len(st.session_state.own_sentence_prompt_order)
+    prompt_index = st.session_state.own_sentence_prompt_order[prompt_position]
+    prompt = WRITING_PROMPTS[prompt_index]
+    difficulty = str(prompt.get("difficulty", "Misturada")).upper()
+
+    st.markdown(
+        '<div class="study-card blue"><span class="eyebrow">ID: writing-own-sentence</span>'
+        f'<br><span class="eyebrow">{difficulty} • ESCRITA • FRASE PRÓPRIA</span>'
+        f'<h2>{prompt["type"]}</h2>'
+        f'<p><b>{prompt["instruction"]}</b></p>'
+        f'<p>{prompt["scene"]}</p></div>',
+        unsafe_allow_html=True,
+    )
+
+    answer = st.text_area(
+        "Escreve aqui a tua frase",
+        placeholder="Escreve uma frase própria seguindo o exercício apresentado acima.",
+        key=f"own_selected_sentence_{prompt_index}",
+        height=110,
+        disabled=st.session_state.own_sentence_answered,
+    )
 
     if st.button("Corrigir frase", type="primary", key="own_sentence_correct_tab", disabled=st.session_state.own_sentence_answered):
         result = validate_writing(answer, prompt)
@@ -168,10 +160,15 @@ def render_own_sentence_task(choice: str) -> None:
             st.session_state.own_sentence_answered = True
             if choice not in st.session_state.writing_completed_missions:
                 st.session_state.writing_completed_missions.append(choice)
-                st.rerun()
         else:
             st.error(result["message"])
             encouragement("incorrect")
+
+    if st.session_state.own_sentence_answered:
+        if st.button("Próximo exercício próprio →", use_container_width=True, key="own_sentence_next"):
+            st.session_state.own_sentence_prompt_position += 1
+            st.session_state.own_sentence_answered = False
+            st.rerun()
 
 
 def render_literary_task(book_name: str) -> None:
@@ -180,10 +177,20 @@ def render_literary_task(book_name: str) -> None:
         st.warning("Ainda não existem missões configuradas para este livro.")
         return
 
-    mission = mission_matches[0]
+    state_key = f"literary_mission_index_{book_name}"
+    st.session_state.setdefault(state_key, random.randrange(len(mission_matches)))
+    mission_index = int(st.session_state[state_key]) % len(mission_matches)
+    mission = mission_matches[mission_index]
+
     description = BOOK_DESCRIPTIONS.get(book_name)
-    st.markdown(f'<div class="scenario-card">📚 <b>{book_name}</b><br><small>{mission["author"]}</small><p>{description}</p><p><b>Localização:</b> {mission["location"]}</p></div>', unsafe_allow_html=True)
-    st.info(mission["instruction"])
+    st.markdown(
+        '<div class="study-card blue"><span class="eyebrow">ID: writing-literary</span>'
+        '<br><span class="eyebrow">ESCRITA • COORDENAÇÃO E SUBORDINAÇÃO</span>'
+        f'<h2>{book_name}</h2><p>{description}</p>'
+        f'<p><b>Localização:</b> {mission["location"]}</p>'
+        f'<p><b>Exercício:</b> {mission["instruction"]}</p></div>',
+        unsafe_allow_html=True,
+    )
 
     answer_key = f"literary_tab_answered_{book_name}"
     st.session_state.setdefault(answer_key, False)
@@ -197,9 +204,20 @@ def render_literary_task(book_name: str) -> None:
             st.error("A frase não parece conter o conector pedido.")
             encouragement("incorrect")
         else:
-            st.success("Investigação correta! +40 XP")
-            encouragement("correct")
-            st.session_state[answer_key] = True
-            if book_name not in st.session_state.writing_completed_missions:
-                st.session_state.writing_completed_missions.append(book_name)
-                st.rerun()
+            verification = validate_verified_quote(book_name, answer, mission["required_connectors"])
+            if not verification["correct"]:
+                st.error(verification["message"])
+                encouragement("incorrect")
+            else:
+                st.success(verification["message"] + " +40 XP")
+                encouragement("correct")
+                st.session_state[answer_key] = True
+                if book_name not in st.session_state.writing_completed_missions:
+                    st.session_state.writing_completed_missions.append(book_name)
+                    st.rerun()
+
+    if st.button("Outra investigação desta obra →", use_container_width=True, key=f"literary_next_{book_name}", disabled=st.session_state[answer_key]):
+        choices = [index for index in range(len(mission_matches)) if index != mission_index]
+        st.session_state[state_key] = random.choice(choices) if choices else mission_index
+        st.session_state[answer_key] = False
+        st.rerun()

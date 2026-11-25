@@ -1,7 +1,40 @@
 {
-  "pass_threshold": 80,
+  "pass_threshold": 60,
   "penalty_points": 1,
-  "short_pause_minutes": 15,
-  "halftime_minutes": 30,
-  "quarter_minutes": 30
+  "short_pause_minutes": 1,
+  "halftime_minutes": 1,
+  "quarter_minutes": 1,
+  "difficulty_escolha_multipla": "Misturada",
+  "difficulty_missao_quiz": "Misturada",
+  "difficulty_liga_ideias": "Misturada",
+  "difficulty_problema_campo": "Misturada",
+  "difficulty_escrita": "Difícil",
+  "avatars_familia": [
+    "Mãe",
+    "Pops",
+    "Mano",
+    "Rafael",
+    "Adriana"
+  ],
+  "avatars_familia_basket": [
+    "Patinho",
+    "Cardadeiro",
+    "Salvador",
+    "Léo",
+    "Reis"
+  ],
+  "avatars_brothers_bairro": [
+    "Zezinho Dino",
+    "Itamar",
+    "Adriana",
+    "Adri",
+    "Salgueiro"
+  ],
+  "avatars_vips_personagens": [
+    "Luka",
+    "Wemby",
+    "Franklin",
+    "Jason",
+    "Lucia"
+  ]
 }

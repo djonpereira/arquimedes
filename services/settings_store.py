@@ -9,6 +9,15 @@ DEFAULTS = {
     "short_pause_minutes": 15,
     "halftime_minutes": 30,
     "quarter_minutes": 30,
+    "difficulty_escolha_multipla": "Misturada",
+    "difficulty_missao_quiz": "Misturada",
+    "difficulty_liga_ideias": "Misturada",
+    "difficulty_problema_campo": "Misturada",
+    "difficulty_escrita": "Misturada",
+    "avatars_familia": ["Mãe", "Pops", "Mano", "Rafael", "Adriana"],
+    "avatars_familia_basket": ["Patinho", "Cardadeiro", "Salvador", "Fradique", "Luís"],
+    "avatars_brothers_bairro": ["Zezinho Dino", "Itamar", "Adriana", "Adri", "Salgueiro"],
+    "avatars_vips_personagens": ["Luka", "Wemby", "Franklin", "Michael", "Jason"],
 }
 
 

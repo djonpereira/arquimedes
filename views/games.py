@@ -1,9 +1,11 @@
 import streamlit as st
 
 from services.game_bank import get_connection_items, get_problem_items
-from services.progress import complete_session_mode
+from services.progress import complete_session_mode, save_mini_game_result
 from components.encouragement import encouragement
-from services.settings_store import calculate_pass
+from services.settings_store import calculate_pass, load_settings
+from components.mini_game_lock import show_locked_result
+from components.mini_game_shell import render_mini_game_status, render_mini_game_card, render_mini_game_feedback
 
 
 CONNECTIONS = [
@@ -25,11 +27,15 @@ def _reset_game(name: str) -> None:
 
 
 def render_connections(subject: str, topic: str) -> None:
+    if show_locked_result("Liga as Ideias"):
+        return
+
     st.markdown('<span class="eyebrow">Jogo de ligação • 10 ligações aleatórias</span>', unsafe_allow_html=True)
     st.markdown('<h1 class="lesson-title">Liga a jogada à relação certa</h1>', unsafe_allow_html=True)
 
     if "connection_items" not in st.session_state:
-        st.session_state.connection_items = get_connection_items(10)
+        liga_difficulty = load_settings()["difficulty_liga_ideias"]
+        st.session_state.connection_items = get_connection_items(10, liga_difficulty)
         st.session_state.connection_round = 0
         st.session_state.connection_score = 0
 
@@ -53,11 +59,14 @@ def render_connections(subject: str, topic: str) -> None:
             st.success("Mini-jogo concluído com aproveitamento suficiente!")
         else:
             st.error("Ainda não atingiste o limite. Recomeça a ligação das ideias.")
+        save_mini_game_result("Liga as Ideias", st.session_state.connection_score, pass_status["percentage"], pass_status["passed"])
         return
 
     item = items[round_index]
-    st.progress((round_index + 1) / len(items), text=f"Ligação {round_index + 1} de {len(items)}")
-    st.markdown(f'<div class="game-token">{item["left"]}</div>', unsafe_allow_html=True)
+    live_status = calculate_pass(st.session_state.connection_score // 20, len(items))
+    render_mini_game_status("Ligação", round_index, len(items), live_status["percentage"], live_status["threshold"], st.session_state.connection_score)
+
+    render_mini_game_card(item["id"], item.get("difficulty", "MÉDIA").upper(), "COORDENAÇÃO E SUBORDINAÇÃO", f"“{item['left']}”", "Que relação representa?")
 
     answer = st.radio(
         "Que relação representa?",
@@ -67,7 +76,7 @@ def render_connections(subject: str, topic: str) -> None:
         disabled=st.session_state.connection_answered,
     )
 
-    if st.button("Validar ligação", type="primary", disabled=st.session_state.connection_answered):
+    if st.button("Confirmar resposta", type="primary", use_container_width=True, disabled=st.session_state.connection_answered):
         if not answer:
             st.warning("Escolhe uma relação antes de validar.")
         elif answer == item["right"]:
@@ -75,10 +84,12 @@ def render_connections(subject: str, topic: str) -> None:
             st.success(f"Ligação perfeita! +20 XP — {item['tip']}")
             encouragement("correct")
             st.session_state.connection_answered = True
+            render_mini_game_feedback(True, item["tip"], 20)
         else:
             st.error(f"Quase. A relação correta é **{item['right']}**. {item['tip']}")
             encouragement("incorrect")
             st.session_state.connection_answered = True
+            render_mini_game_feedback(False, item["tip"], 20)
 
     if st.button("Próxima ligação →"):
         st.session_state.connection_answered = False
@@ -87,11 +98,15 @@ def render_connections(subject: str, topic: str) -> None:
 
 
 def render_problem_game(subject: str, topic: str) -> None:
+    if show_locked_result("Problema em Campo"):
+        return
+
     st.markdown('<span class="eyebrow">Problema de leitura • 10 cenários aleatórios</span>', unsafe_allow_html=True)
     st.markdown('<h1 class="lesson-title">Decide a jogada da frase</h1>', unsafe_allow_html=True)
 
     if "problem_items" not in st.session_state:
-        st.session_state.problem_items = get_problem_items(10)
+        problema_difficulty = load_settings()["difficulty_problema_campo"]
+        st.session_state.problem_items = get_problem_items(10, problema_difficulty)
         st.session_state.problem_round = 0
         st.session_state.problem_score = 0
 
@@ -115,11 +130,20 @@ def render_problem_game(subject: str, topic: str) -> None:
             st.success("Mini-jogo concluído com aproveitamento suficiente!")
         else:
             st.error("Ainda não atingiste o limite. Recomeça os problemas.")
+        save_mini_game_result("Problema em Campo", st.session_state.problem_score, pass_status["percentage"], pass_status["passed"])
         return
 
     item = items[round_index]
     st.progress((round_index + 1) / len(items), text=f"Problema {round_index + 1} de {len(items)}")
-    st.markdown(f'<div class="scenario-card">📋 <b>Cenário</b><p>{item["scenario"]}</p></div>', unsafe_allow_html=True)
+
+    live_status = calculate_pass(st.session_state.problem_score // 20, len(items))
+    st.progress(live_status["percentage"] / 100, text=f"Aproveitamento: {live_status['percentage']}% • limite: {live_status['threshold']}%")
+    if live_status["passed"]:
+        st.success("Limite atingido.")
+    else:
+        st.caption("Limite ainda não atingido.")
+
+    st.markdown(f'<div class="quiz-card"><span class="eyebrow">ID: {item["id"]}</span><br><span class="eyebrow">{item["difficulty"].upper()} • COORDENAÇÃO E SUBORDINAÇÃO</span><h2>Cenário</h2><p>{item["scenario"]}</p><p>Que alteração mantém melhor o sentido?</p></div>', unsafe_allow_html=True)
 
     choice = st.radio("Que alteração mantém melhor o sentido?", item["options"], key=f"problem_{round_index}", index=None, disabled=st.session_state.problem_answered)
 
