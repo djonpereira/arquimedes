@@ -3,6 +3,7 @@ import streamlit as st
 from services.progress import award_quiz, complete_session_mode
 from services.literary_writing_bank import WRITING_PROMPTS, LITERARY_MISSIONS, BOOK_DESCRIPTIONS, validate_writing
 from components.encouragement import encouragement
+from services.settings_store import calculate_pass
 
 
 def render_writing(subject: str = "Português", topic: str = "Coordenação e subordinação") -> None:
@@ -156,13 +157,15 @@ def render_own_sentence_task(choice: str) -> None:
     st.markdown('<div class="scenario-card">✍️ <b>Frase minha</b><p>Cria uma frase original usando uma relação sintática pedida.</p></div>', unsafe_allow_html=True)
     prompt = WRITING_PROMPTS[st.session_state.get("own_sentence_prompt_index", 0) % len(WRITING_PROMPTS)]
     st.write(prompt["instruction"])
-    answer = st.text_area("Escreve aqui a tua frase", key="own_selected_sentence_tabs", height=110)
+    st.session_state.setdefault("own_sentence_answered", False)
+    answer = st.text_area("Escreve aqui a tua frase", key="own_selected_sentence_tabs", height=110, disabled=st.session_state.own_sentence_answered)
 
-    if st.button("Corrigir frase", type="primary", key="own_sentence_correct_tab"):
+    if st.button("Corrigir frase", type="primary", key="own_sentence_correct_tab", disabled=st.session_state.own_sentence_answered):
         result = validate_writing(answer, prompt)
         if result["correct"]:
             st.success(result["message"] + " +25 XP")
             encouragement("correct")
+            st.session_state.own_sentence_answered = True
             if choice not in st.session_state.writing_completed_missions:
                 st.session_state.writing_completed_missions.append(choice)
                 st.rerun()
@@ -182,9 +185,11 @@ def render_literary_task(book_name: str) -> None:
     st.markdown(f'<div class="scenario-card">📚 <b>{book_name}</b><br><small>{mission["author"]}</small><p>{description}</p><p><b>Localização:</b> {mission["location"]}</p></div>', unsafe_allow_html=True)
     st.info(mission["instruction"])
 
-    answer = st.text_area("Escreve a frase encontrada", key=f"literary_tab_{book_name}", height=120)
+    answer_key = f"literary_tab_answered_{book_name}"
+    st.session_state.setdefault(answer_key, False)
+    answer = st.text_area("Escreve a frase encontrada", key=f"literary_tab_{book_name}", height=120, disabled=st.session_state[answer_key])
 
-    if st.button("Verificar investigação", type="primary", key=f"literary_check_{book_name}"):
+    if st.button("Verificar investigação", type="primary", key=f"literary_check_{book_name}", disabled=st.session_state[answer_key]):
         normalized = " ".join(answer.lower().strip().split())
         if len(normalized) < 12:
             st.warning("A frase precisa de ser uma oração completa.")
@@ -194,6 +199,7 @@ def render_literary_task(book_name: str) -> None:
         else:
             st.success("Investigação correta! +40 XP")
             encouragement("correct")
+            st.session_state[answer_key] = True
             if book_name not in st.session_state.writing_completed_missions:
                 st.session_state.writing_completed_missions.append(book_name)
                 st.rerun()

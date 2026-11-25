@@ -1,0 +1,7 @@
+{
+  "pass_threshold": 80,
+  "penalty_points": 1,
+  "short_pause_minutes": 15,
+  "halftime_minutes": 30,
+  "quarter_minutes": 30
+}

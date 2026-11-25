@@ -3,6 +3,7 @@ import streamlit as st
 from services.progress import award_quiz, complete_session_mode
 from services.question_bank import get_random_quiz
 from components.encouragement import encouragement
+from services.settings_store import calculate_pass
 
 
 QUESTIONS = [
@@ -92,8 +93,8 @@ def render_experiment(mode: str = "mission", subject: str = "Português", topic:
         st.markdown(f'''<div class="shot-stage"><div class="hoop">CESTO</div><div class="ball{(' shot-made' if st.session_state.quiz_answered else '')}">●</div><div class="shot-floor"></div></div>''', unsafe_allow_html=True)
     with shot2:
         st.markdown(f'<div class="quiz-card"><span class="eyebrow">Jogada {index + 1}</span><h2>“{question["sentence"]}”</h2><p>{question["question"]}</p></div>', unsafe_allow_html=True)
-        answer = st.radio("Escolhe o lançamento", question["options"], key=f"answer_{index}", index=None)
-        confirm = st.button("Lançar!", type="primary", use_container_width=True)
+        answer = st.radio("Escolhe o lançamento", question["options"], key=f"answer_{index}", index=None, disabled=st.session_state.quiz_answered)
+        confirm = st.button("Lançar!", type="primary", use_container_width=True, disabled=st.session_state.quiz_answered)
 
     if confirm:
         if answer is None:
@@ -122,4 +123,10 @@ def render_experiment(mode: str = "mission", subject: str = "Português", topic:
 
     st.caption(f"XP: {st.session_state.quiz_xp}  •  Streak: {st.session_state.quiz_streak}")
 
-    complete_session_mode("Missão Quiz")
+    pass_status = calculate_pass(st.session_state.quiz_made, len(questions))
+    st.progress(pass_status["percentage"] / 100, text=f"Aproveitamento: {pass_status['percentage']}% • limite: {pass_status['threshold']}%")
+    if not pass_status["passed"]:
+        st.error("Ainda não atingiste o limite. Recomeça o mini-jogo e melhora esta jogada.")
+    else:
+        st.success("Mini-jogo concluído com aproveitamento suficiente!")
+        complete_session_mode("Missão Quiz")

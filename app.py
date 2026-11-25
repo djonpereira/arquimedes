@@ -7,6 +7,7 @@ from views.multiple_choice import render_multiple_choice
 from views.games import render_connections, render_problem_game
 from views.writing import render_writing
 from views.content_suggestions import render_content_suggestions
+from views.settings import render_settings
 from components.styles import load_styles
 from components.session_scoreboard import render_session_scoreboard
 from services.curriculum import CURRICULUM, LEVELS
@@ -32,7 +33,7 @@ with st.sidebar:
     st.divider()
     page = st.radio(
         "Navegação",
-        ["Painel do Rafael", "Resumos", "Escolha Múltipla", "Missão Quiz", "Liga as Ideias", "Problema em Campo", "Laboratório de Escrita", "Sugerir Conteúdo"],
+        ["Painel do Rafael", "Resumos", "Escolha Múltipla", "Missão Quiz", "Liga as Ideias", "Problema em Campo", "Laboratório de Escrita", "Sugerir Conteúdo", "Definições"],
         label_visibility="collapsed",
     )
 
@@ -61,3 +62,5 @@ elif page == "Laboratório de Escrita":
     render_writing(subject, topic)
 elif page == "Sugerir Conteúdo":
     render_content_suggestions()
+elif page == "Definições":
+    render_settings()

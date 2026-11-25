@@ -3,6 +3,7 @@ import streamlit as st
 from services.progress import award_quiz, complete_session_mode
 from services.multiple_choice_bank import get_multiple_choice_quiz
 from components.encouragement import encouragement
+from services.settings_store import calculate_pass
 
 
 def render_multiple_choice(subject: str = "Português", topic: str = "Coordenação e subordinação") -> None:
@@ -51,6 +52,14 @@ def render_multiple_choice(subject: str = "Português", topic: str = "Coordenaç
         st.markdown('<div class="finish-card"><span>PLACAR FECHADO</span><h2>Boa partida, Rafael! 🏀</h2><p>Revisaste 10 questões escolhidas aleatoriamente.</p></div>', unsafe_allow_html=True)
         st.metric("XP ganho", st.session_state.mc_score)
 
+        pass_status = calculate_pass(st.session_state.mc_score // 20, len(items))
+        st.progress(pass_status["percentage"] / 100, text=f"Aproveitamento: {pass_status['percentage']}% • limite: {pass_status['threshold']}%")
+        if not pass_status["passed"]:
+            st.error("Ainda não atingiste o limite. Recomeça o bloco de 10 questões.")
+        else:
+            st.success("Bloco concluído com aproveitamento suficiente!")
+            complete_session_mode("Escolha Múltipla")
+
         if st.button("Novo bloco de 10", type="primary", use_container_width=True):
             st.session_state.mc_items = get_multiple_choice_quiz(10, selected_difficulty)
             st.session_state.mc_index = 0
@@ -83,7 +92,7 @@ def render_multiple_choice(subject: str = "Português", topic: str = "Coordenaç
             key=f"mc_answer_{index}",
         )
 
-    if st.button("Confirmar resposta", type="primary", use_container_width=True):
+    if st.button("Confirmar resposta", type="primary", use_container_width=True, disabled=st.session_state.mc_answered):
         if not answer:
             st.warning("Escolhe pelo menos uma opção antes de confirmar.")
         elif item.get("multiple", False):
@@ -121,4 +130,6 @@ def render_multiple_choice(subject: str = "Português", topic: str = "Coordenaç
     st.caption(f"XP do bloco: {st.session_state.mc_score}")
 
     if index + 1 == len(items):
-        complete_session_mode("Escolha Múltipla")
+        pass_status = calculate_pass(st.session_state.mc_score // 20, len(items))
+        if pass_status["passed"]:
+            complete_session_mode("Escolha Múltipla")
