@@ -1,0 +1,14 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Arquimedes: Run Streamlit",
+      "type": "shell",
+      "command": "C:/Python314/python.exe",
+      "args": ["-m", "streamlit", "run", "app.py"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ]
+}

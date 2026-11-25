@@ -1,0 +1,11 @@
+[theme]
+primaryColor="#0f766e"
+backgroundColor="#f5f7f3"
+secondaryBackgroundColor="#e8eee6"
+textColor="#17211d"
+font="sans serif"
+
+[server]
+headless = true
+runOnSave = true
+enableStaticServing = true
