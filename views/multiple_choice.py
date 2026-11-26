@@ -12,7 +12,9 @@ def render_multiple_choice(subject: str = "Português", topic: str = "Coordenaç
     st.markdown('<h1 class="lesson-title">Rafael, escolhe a melhor resposta</h1>', unsafe_allow_html=True)
     st.markdown(f'<span class="eyebrow">{subject} • 9.º ano • {topic}</span>', unsafe_allow_html=True)
 
-    difficulty = load_settings()["difficulty_escolha_multipla"]
+    settings = load_settings()
+    game_mode = bool(settings.get("modo_jogo", False))
+    difficulty = settings["difficulty_escolha_multipla"]
     difficulty_map = {"Fácil": "easy", "Média": "medium", "Difícil": "hard"}
     selected_difficulty = difficulty_map.get(difficulty)
 
@@ -39,23 +41,29 @@ def render_multiple_choice(subject: str = "Português", topic: str = "Coordenaç
     index = st.session_state.mc_index
 
     if index >= len(items):
-        if not st.session_state.mc_saved:
+        if game_mode and not st.session_state.mc_saved:
             award_quiz(subject, topic, st.session_state.mc_score)
             st.session_state.mc_saved = True
 
         st.balloons()
         st.markdown('<div class="finish-card"><span>PLACAR FECHADO</span><h2>Boa partida, Rafael! 🏀</h2><p>Revisaste 10 questões escolhidas aleatoriamente.</p></div>', unsafe_allow_html=True)
-        st.metric("XP ganho", st.session_state.mc_score)
+        if game_mode:
+            st.metric("XP ganho", st.session_state.mc_score)
+            pass_status = calculate_pass(st.session_state.mc_score // 20, len(items))
+            st.progress(pass_status["percentage"] / 100, text=f"Aproveitamento: {pass_status['percentage']}% • limite: {pass_status['threshold']}%")
+            if not pass_status["passed"]:
+                st.error("Ainda não atingiste o limite. Recomeça o bloco de 10 questões.")
+            else:
+                st.success("Bloco concluído com aproveitamento suficiente!")
+                complete_session_mode("Escolha Múltipla")
 
-        pass_status = calculate_pass(st.session_state.mc_score // 20, len(items))
-        st.progress(pass_status["percentage"] / 100, text=f"Aproveitamento: {pass_status['percentage']}% • limite: {pass_status['threshold']}%")
-        if not pass_status["passed"]:
-            st.error("Ainda não atingiste o limite. Recomeça o bloco de 10 questões.")
+            save_mini_game_result("Escolha Múltipla", st.session_state.mc_score, pass_status["percentage"], pass_status["passed"])
         else:
-            st.success("Bloco concluído com aproveitamento suficiente!")
-            complete_session_mode("Escolha Múltipla")
-
-        save_mini_game_result("Escolha Múltipla", st.session_state.mc_score, pass_status["percentage"], pass_status["passed"])
+            correct_answers = int(st.session_state.mc_score)
+            percentage = round((correct_answers / len(items)) * 100) if items else 0
+            st.metric("Acertos", f"{correct_answers} / {len(items)}")
+            st.progress(percentage / 100, text=f"Aproveitamento: {percentage}%")
+            st.success("Bloco concluído. Continua com o resumo e volta para mais prática.")
 
         if st.button("Novo bloco de 10", type="primary", use_container_width=True):
             st.session_state.mc_items = get_multiple_choice_quiz(10, selected_difficulty)
@@ -67,8 +75,15 @@ def render_multiple_choice(subject: str = "Português", topic: str = "Coordenaç
         return
 
     item = items[index]
-    live_status = calculate_pass(st.session_state.mc_score // 20, len(items))
-    render_mini_game_status("Questão", index, len(items), live_status["percentage"], live_status["threshold"], st.session_state.mc_score)
+    if game_mode:
+        live_status = calculate_pass(st.session_state.mc_score // 20, len(items))
+        render_mini_game_status("Questão", index, len(items), live_status["percentage"], live_status["threshold"], st.session_state.mc_score)
+    else:
+        current_correct = int(st.session_state.mc_score)
+        current_percentage = round((current_correct / len(items)) * 100) if items else 0
+        st.progress((index + 1) / len(items), text=f"Questão {index + 1} de {len(items)}")
+        st.progress(current_percentage / 100, text=f"Aproveitamento: {current_percentage}%")
+        st.caption(f"Acertos até agora: {current_correct}")
 
     render_mini_game_card(item["id"], item["difficulty"].upper(), item["topic"], f"“{item['sentence']}”", item["question"])
 
@@ -94,30 +109,40 @@ def render_multiple_choice(subject: str = "Português", topic: str = "Coordenaç
             selected = set(answer)
             correct = set(item["answer"])
             if selected == correct:
-                st.session_state.mc_score += 20
+                st.session_state.mc_score += 20 if game_mode else 1
                 st.session_state.mc_answered = True
-                st.success("Resposta correta! +20 XP")
-                st.info(item["tip"])
-                render_mini_game_feedback(True, item["tip"], 20)
+                if game_mode:
+                    st.success("Resposta correta! +20 XP")
+                    st.info(item["tip"])
+                    render_mini_game_feedback(True, item["tip"], 20)
+                else:
+                    st.success("Resposta correta!")
+                    st.info(item["tip"])
                 encouragement("correct")
             else:
                 st.session_state.mc_answered = True
                 st.error("Quase. Seleciona exatamente: " + " + ".join(item["answer"]))
                 st.info(item["tip"])
-                render_mini_game_feedback(False, item["tip"], 20)
+                if game_mode:
+                    render_mini_game_feedback(False, item["tip"], 20)
                 encouragement("incorrect")
         elif answer == item["answer"]:
-            st.session_state.mc_score += 20
+            st.session_state.mc_score += 20 if game_mode else 1
             st.session_state.mc_answered = True
-            st.success("Resposta correta! +20 XP")
-            st.info(item["tip"])
-            render_mini_game_feedback(True, item["tip"], 20)
+            if game_mode:
+                st.success("Resposta correta! +20 XP")
+                st.info(item["tip"])
+                render_mini_game_feedback(True, item["tip"], 20)
+            else:
+                st.success("Resposta correta!")
+                st.info(item["tip"])
             encouragement("correct")
         else:
             st.session_state.mc_answered = True
             st.error(f"Quase. A resposta correta é: **{item['answer']}**")
             st.info(item["tip"])
-            render_mini_game_feedback(False, item["tip"], 20)
+            if game_mode:
+                render_mini_game_feedback(False, item["tip"], 20)
             encouragement("incorrect")
 
     if st.session_state.mc_answered:
@@ -126,4 +151,7 @@ def render_multiple_choice(subject: str = "Português", topic: str = "Coordenaç
             st.session_state.mc_answered = False
             st.rerun()
 
-    st.caption(f"XP do bloco: {st.session_state.mc_score}")
+    if game_mode:
+        st.caption(f"XP do bloco: {st.session_state.mc_score}")
+    else:
+        st.caption(f"Acertos do bloco: {st.session_state.mc_score}")

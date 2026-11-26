@@ -12,8 +12,9 @@ from views.games_ranking import render_games_ranking
 from views.game_rules import render_game_rules
 from components.styles import load_styles
 from components.session_scoreboard import render_session_scoreboard
-from services.curriculum import CURRICULUM, LEVELS
+from services.curriculum import CURRICULUM
 from services.progress import load_progress
+from services.settings_store import load_settings
 
 st.set_page_config(
     page_title="Rafael — Arquimedes",
@@ -33,6 +34,8 @@ with st.sidebar:
     topic = st.selectbox("Materia", topics, index=0)
 
     st.divider()
+    settings = load_settings()
+    game_mode = bool(settings.get("modo_jogo", False))
     progress_state = load_progress()
     active_game = progress_state.get("active_game")
     timer_running = bool(st.session_state.get("timer_running", False))
@@ -47,7 +50,15 @@ with st.sidebar:
         "5. Laboratório de Escrita",
     ]
 
-    if active_game and timer_running:
+    if not game_mode:
+        navigation_options = [
+            "Resumo da Matéria",
+            *mini_game_links,
+            "Definições",
+            "Sugerir Conteúdo",
+        ]
+        page = st.radio("Navegação", navigation_options, label_visibility="collapsed")
+    elif active_game and timer_running:
         with st.container(key="sidebar-active-mini-nav"):
             page = st.radio("Navegação", mini_game_links, label_visibility="collapsed")
     elif active_game and in_timeout:
@@ -65,14 +76,10 @@ with st.sidebar:
         ]
         page = st.radio("Navegação", navigation_options, label_visibility="collapsed")
 
-
-#    progress = CURRICULUM[subject]["topics"][topic]["progress"]
-#    current_level = next((name for name, minimum in reversed(LEVELS) if progress >= minimum), "Rookie")
-#    st.markdown("<small>CAMINHO DE NÍVEL</small>", unsafe_allow_html=True)
-#    st.progress(progress / 100, text=f"{current_level} • {progress} XP")
-
-
-render_session_scoreboard(subject, topic)
+if game_mode:
+    render_session_scoreboard(subject, topic)
+else:
+    st.info("Modo estudo ativo: usa o resumo da matéria e os quizzes para praticar sem cronómetro nem pontuação de jogo.")
 
 st.caption(f"{subject}  /  {topic}")
 

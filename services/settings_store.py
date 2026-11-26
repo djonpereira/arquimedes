@@ -4,6 +4,7 @@ from pathlib import Path
 
 SETTINGS_FILE = Path("data/settings.json")
 DEFAULTS = {
+    "modo_jogo": False,
     "pass_threshold": 80,
     "penalty_points": 1,
     "short_pause_minutes": 15,

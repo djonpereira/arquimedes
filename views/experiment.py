@@ -27,6 +27,9 @@ def render_experiment(mode: str = "mission", subject: str = "Português", topic:
     st.markdown(f'<span class="eyebrow">{subject} • 9.º ano • {topic}</span>', unsafe_allow_html=True)
 
     st.session_state.setdefault("quiz_index", 0)
+    settings = load_settings()
+    game_mode = bool(settings.get("modo_jogo", False))
+
     st.session_state.setdefault("quiz_xp", 0)
     st.session_state.setdefault("quiz_answered", False)
     st.session_state.setdefault("quiz_streak", 0)
@@ -34,7 +37,7 @@ def render_experiment(mode: str = "mission", subject: str = "Português", topic:
     st.session_state.setdefault("quiz_made", 0)
     st.session_state.setdefault("quiz_saved", False)
 
-    difficulty = load_settings()["difficulty_missao_quiz"]
+    difficulty = settings["difficulty_missao_quiz"]
     st.markdown(f'<span class="eyebrow">10 jogadas • dificuldade {difficulty.lower()}</span>', unsafe_allow_html=True)
 
     difficulty_map = {"Fácil": "easy", "Média": "medium", "Difícil": "hard"}
@@ -49,13 +52,16 @@ def render_experiment(mode: str = "mission", subject: str = "Português", topic:
     index = st.session_state.quiz_index
 
     if index >= len(questions):
-        if not st.session_state.quiz_saved:
+        if game_mode and not st.session_state.quiz_saved:
             award_quiz(subject, topic, st.session_state.quiz_xp)
             st.session_state.quiz_saved = True
         st.balloons()
         st.markdown('<div class="finish-card"><span>MISSÃO COMPLETA</span><h2>Rafael, fechaste o jogo! 🏀</h2><p>Aprender também é repetir a jogada até ela sair limpa.</p></div>', unsafe_allow_html=True)
         c1, c2, c3 = st.columns(3)
-        c1.metric("XP ganho", st.session_state.quiz_xp)
+        if game_mode:
+            c1.metric("XP ganho", st.session_state.quiz_xp)
+        else:
+            c1.metric("Acertos", f"{st.session_state.quiz_made} / {len(questions)}")
         c2.metric("Cestos", sum(1 for _ in range(index)))
         c3.metric("Melhor streak", st.session_state.quiz_streak)
         if st.button("Nova partida", type="primary", use_container_width=True):
@@ -72,12 +78,17 @@ def render_experiment(mode: str = "mission", subject: str = "Português", topic:
 
     question = questions[index]
     live_status = calculate_pass(st.session_state.quiz_made, len(questions))
-    render_mini_game_status("Jogada", index, len(questions), live_status["percentage"], live_status["threshold"], st.session_state.quiz_xp)
+    if game_mode:
+        render_mini_game_status("Jogada", index, len(questions), live_status["percentage"], live_status["threshold"], st.session_state.quiz_xp)
 
-    if live_status["passed"]:
-        st.success("Limite atingido.")
+        if live_status["passed"]:
+            st.success("Limite atingido.")
+        else:
+            st.caption("Limite ainda não atingido.")
     else:
-        st.caption("Limite ainda não atingido.")
+        st.progress((index + 1) / len(questions), text=f"Jogada {index + 1} de {len(questions)}")
+        st.progress(live_status["percentage"] / 100, text=f"Aproveitamento: {live_status['percentage']}%")
+        st.caption(f"Acertos até agora: {st.session_state.quiz_made}")
 
     render_mini_game_card(question["id"], question.get("difficulty", "").upper(), question.get("topic", ""), f"“{question['sentence']}”", question["question"])
 
@@ -88,18 +99,25 @@ def render_experiment(mode: str = "mission", subject: str = "Português", topic:
         if answer is None:
             st.warning("Escolhe primeiro uma opção, Rafael.")
         elif answer == question["answer"]:
-            st.session_state.quiz_xp += 20
+            st.session_state.quiz_xp += 20 if game_mode else 0
             st.session_state.quiz_streak += 1
             st.session_state.quiz_made += 1
             st.session_state.quiz_best_streak = max(st.session_state.quiz_best_streak, st.session_state.quiz_streak)
             st.session_state.quiz_answered = True
-            render_mini_game_feedback(True, question["tip"], 20)
+            if game_mode:
+                render_mini_game_feedback(True, question["tip"], 20)
+            else:
+                st.success("Resposta correta!")
+                st.info(question["tip"])
             encouragement("correct")
         else:
             st.session_state.quiz_streak = 0
             st.session_state.quiz_answered = True
             st.info(question["tip"])
-            render_mini_game_feedback(False, question["tip"], 20)
+            if game_mode:
+                render_mini_game_feedback(False, question["tip"], 20)
+            else:
+                st.error("Quase. Revê a relação e tenta de novo na próxima jogada.")
             encouragement("incorrect")
 
     if st.session_state.quiz_answered:
@@ -108,7 +126,10 @@ def render_experiment(mode: str = "mission", subject: str = "Português", topic:
             st.session_state.quiz_answered = False
             st.rerun()
 
-    st.caption(f"XP: {st.session_state.quiz_xp}  •  Streak: {st.session_state.quiz_streak}")
+    if game_mode:
+        st.caption(f"XP: {st.session_state.quiz_xp}  •  Streak: {st.session_state.quiz_streak}")
+    else:
+        st.caption(f"Acertos: {st.session_state.quiz_made}  •  Streak: {st.session_state.quiz_streak}")
 
 '''
     pass_status = calculate_pass(st.session_state.quiz_made, len(questions))

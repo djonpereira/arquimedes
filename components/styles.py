@@ -113,19 +113,6 @@ def load_styles() -> None:
     @media (max-width: 900px) { [data-testid="stMainBlockContainer"] { padding-top:96px; } .st-key-session-scoreboard { left:.5rem; right:.5rem; top:.5rem; } }
     @media (max-width: 700px) { [data-testid="stMainBlockContainer"] { padding-top:112px; } .st-key-session-scoreboard { padding:6px; } .quarter-board { padding:5px 6px; } .quarter-header b { font-size:10px; } .quarter-header small { display:none; } .score-dot { width:9px; height:9px; } .quarter-timer { height:44px; display:flex; align-items:center; justify-content:center; text-align:center; font:700 26px/44px 'DM Sans',sans-serif; color:#17382e; font-variant-numeric:tabular-nums; white-space:nowrap; } }
 
-    [data-testid="stSidebar"] [data-testid="stRadioGroup"] > div:nth-child(3),
-    [data-testid="stSidebar"] [data-testid="stRadioGroup"] > div:nth-child(4),
-    [data-testid="stSidebar"] [data-testid="stRadioGroup"] > div:nth-child(5),
-    [data-testid="stSidebar"] [data-testid="stRadioGroup"] > div:nth-child(6),
-    [data-testid="stSidebar"] [data-testid="stRadioGroup"] > div:nth-child(7) { padding-left:24px; }
-    [data-testid="stSidebar"] [data-testid="stRadioGroup"] > div:nth-child(8) { padding-left:0; }
-    [data-testid="stSidebar"] [data-testid="stRadioGroup"] > div:nth-child(9) { border-top:1px solid #91aaa066; margin-top:10px; padding-top:10px; }
-
-    [data-testid="stSidebar"] .st-key-sidebar-active-mini-nav [data-testid="stRadioGroup"] > div,
-    [data-testid="stSidebar"] .st-key-sidebar-timeout-nav [data-testid="stRadioGroup"] > div:nth-child(n+2) { margin-left:24px !important; width:calc(100% - 24px) !important; padding-left:0 !important; }
-    [data-testid="stSidebar"] .st-key-sidebar-active-mini-nav [data-testid="stRadioGroup"] label,
-    [data-testid="stSidebar"] .st-key-sidebar-timeout-nav [data-testid="stRadioGroup"] label { margin-left:0 !important; padding-left:0 !important; }
-
     [data-testid="stMain"] [data-testid="stDataFrame"] { max-height:560px; overflow-y:auto !important; }
     [data-testid="stMain"] [data-testid="stDataFrame"] > div { max-height:560px; overflow-y:auto !important; }
 

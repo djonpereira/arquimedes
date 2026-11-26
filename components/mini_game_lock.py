@@ -1,9 +1,13 @@
 import streamlit as st
 
 from services.progress import get_mini_game_result
+from services.settings_store import load_settings
 
 
 def show_locked_result(mode: str) -> bool:
+    if not bool(load_settings().get("modo_jogo", False)):
+        return False
+
     result = get_mini_game_result(mode)
     if not result:
         return False

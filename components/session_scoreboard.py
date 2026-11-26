@@ -13,6 +13,9 @@ from services.settings_store import load_settings
 
 
 def render_session_scoreboard(subject: str = "Português", topic: str = "") -> None:
+    settings = load_settings()
+    if not bool(settings.get("modo_jogo", False)):
+        return
     render_timer(subject, topic)
 
 

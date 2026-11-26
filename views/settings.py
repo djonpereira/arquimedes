@@ -9,6 +9,12 @@ def render_settings() -> None:
 
     settings = load_settings()
 
+    modo_jogo = st.toggle(
+        "Modo de jogo",
+        value=bool(settings.get("modo_jogo", False)),
+        help="Ativa funcionalidades de modo jogo quando disponível.",
+    )
+
     threshold = st.slider(
         "Aproveitamento necessário para concluir um mini-jogo",
         min_value=50,
@@ -56,6 +62,7 @@ def render_settings() -> None:
             st.warning("Cada grupo deve ter exatamente 5 avatares. Rever: " + ", ".join(invalid) + ".")
             st.stop()
         saved = save_settings({
+            "modo_jogo": modo_jogo,
             "pass_threshold": threshold,
             "penalty_points": penalty,
             "short_pause_minutes": short_pause,
